@@ -16,6 +16,32 @@ view: customer_demographics {
     sql: ${TABLE}.Balance ;;
   }
 
+  dimension: has_balance {
+    type: yesno
+    sql: ${balance} < 0 ;;
+  }
+
+  measure: count_has_balance {
+    type: count
+    # sql: ${id} ;;
+    filters: {
+      field: has_balance
+      value: "yes"
+    }
+  }
+
+  measure: total_balance {
+    type: sum
+    sql: ${balance} ;;
+    value_format_name: usd
+  }
+
+  measure: avg_balance {
+    type: average
+    sql: ${balance} ;;
+    value_format_name: usd_0
+  }
+
   dimension: balance_bucket {
     type: string
     sql: ${TABLE}.Balance_bucket ;;
@@ -39,6 +65,34 @@ view: customer_demographics {
   dimension: contactcorr {
     type: string
     sql: ${TABLE}.contactcorr ;;
+    action: {
+      label: "Contact Customer Via Email"
+      url: "https://desolate-refuge-53336.herokuapp.com/posts"
+      icon_url: "https://sendgrid.com/favicon.ico"
+      param: {
+        name: "some_auth_code"
+        value: "abc123456"
+      }
+      form_param: {
+        name: "Subject"
+        required: yes
+        default: "Special offer for refinancing for [CUSTOMER NAME]"
+      }
+      form_param: {
+        name: "To Mailing List"
+        required: yes
+      }
+      form_param: {
+        name: "Body"
+        type: textarea
+        required: yes
+        default:
+        "Dear Loyal Banking Customer,
+
+        Please accept our offer to refinance at 2%"
+      }
+    }
+
   }
 
   dimension: customer_segment {
@@ -102,9 +156,15 @@ view: customer_demographics {
   }
 
   dimension: job_corected {
+    label: "Job Corrected"
     type: string
     sql: ${TABLE}.Job_corected ;;
   }
+
+dimension: is_house_maid {
+  type: yesno
+  sql: ${job_corected} = 'House Maid' ;;
+}
 
   dimension: loan {
     type: string
@@ -114,6 +174,32 @@ view: customer_demographics {
   dimension: loancor {
     type: string
     sql: ${TABLE}.Loancor ;;
+  }
+
+  dimension: has_loan {
+    type: yesno
+    sql: ${loancor} = 'Yes' ;;
+  }
+
+  measure: customer_count {
+    type: count
+    drill_fields: [age, marital, contact,campaign,balance, target]
+  }
+
+  measure: count_has_loan {
+    type: count
+    filters: {
+      field: has_loan
+      value: "Yes"
+    }
+    drill_fields: [age, marital, contact,campaign,balance, target]
+
+  }
+
+  measure: percent_has_loan {
+    type: number
+    sql: 1.0 * ${count_has_loan}/${customer_count} ;;
+    value_format_name: percent_2
   }
 
   dimension: marital {
@@ -191,38 +277,57 @@ view: customer_demographics {
     type: count_distinct
     sql: ${campaign} ;;
   }
-  measure:   campaign_frequency{
-    type: count
-    drill_fields:[campaign]
-  }
+
+  # measure:   campaign_frequency{
+  #   type: count
+  #   drill_fields:[campaign]
+  # }
 
   measure:   marital_frequency{
-    type: count
+    type: count_distinct
+    sql: ${maritalcorre} ;;
     drill_fields:[marital]
 
   }
 
-  measure:   age_bucket_frequency{
-    type: count
-    drill_fields: [age_bucket]
-  }
-  measure:   occupation_frequency{
-    type: count
-    drill_fields: [job_corected]
+  # measure:   age_bucket_frequency{
+  #   type: count
+  #   drill_fields: [age_bucket]
+  # }
+  # measure:   occupation_frequency{
+  #   type: count
+  #   drill_fields: [job_corected]
 
-  }
+  # }
 
-  measure:   education_frequency{
-    type: count
-    drill_fields: [education_frequency]
+  # measure:   education_frequency{
+  #   type: count
+  #   drill_fields: [education_frequency]
 
-  }
+  # }
 
-  measure:   balance_frequency{
-    type: count
-    drill_fields: [balance_frequency]
+  # measure:   balance_frequency{
+  #   type: count
+  #   drill_fields: [balance_frequency]
+  # }
 
-  }
+  # measure:   loan_count{
+  #   type: count
+  #   drill_fields: [loancor]
+  # }
+
+
+  #dimension: home_loan_sum {
+   # sql: (SELECT count(*) FROM  ${customer_demographics.SQL_TABLE_NAME} o WHERE
+  #  o.loancor='Yes') ;;
+    # correlated subselect to derive the value for "first_order_id"
+  #}
+
+  #measure: positive_loan_count {
+  #  sql: (SELECT sum(${loan_count}) FROM dbo.CampaignResponseModel) ;;
+  #  type: number
+  #}
+
 
 
   }
